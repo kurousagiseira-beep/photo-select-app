@@ -27,11 +27,11 @@ function renderAttendance(){
  el.innerHTML=casts.map(c=>'<div class="row" style="justify-content:space-between;border-bottom:1px solid #493b23;padding:8px 0"><b>'+esc(c.name)+'</b><button style="min-width:100px;background:'+(attendance[String(c.id)]===false?'#69312b':'#b99545')+';color:'+(attendance[String(c.id)]===false?'white':'#120e05')+'" onclick="setAttendance(\''+String(c.id).replace(/'/g,'')+'\','+(attendance[String(c.id)]===false?'true':'false')+')">'+(attendance[String(c.id)]===false?'休み':'出勤')+'</button></div>').join('')||'<p>登録キャストがありません。</p>';
 }
 async function loadAttendance(){
- const pin=document.getElementById('staffNotifyPin').value.trim();if(!/^\\d{4}$/.test(pin))return;
+ const pin=document.getElementById('staffNotifyPin').value.trim();if(!/^\d{4}$/.test(pin))return;
  try{const data=await callApi('/photo/attendance',{pin});attendance=data.attendance||{};attendanceDate=data.date;renderAttendance()}catch(e){document.getElementById('attendanceResult').textContent=e.message}
 }
 async function setAttendance(id,attending){
- const pin=document.getElementById('staffNotifyPin').value.trim();if(!/^\\d{4}$/.test(pin))return alert('スタッフPINを入力してください');
+ const pin=document.getElementById('staffNotifyPin').value.trim();if(!/^\d{4}$/.test(pin))return alert('スタッフPINを入力してください');
  const out=document.getElementById('attendanceResult');out.textContent='保存中…';
  try{const data=await callApi('/photo/attendance',{pin,id,attending});attendance=data.attendance||{};attendanceDate=data.date;renderAttendance();out.textContent='保存しました（'+attendanceDate+'）'}catch(e){out.textContent='保存失敗：'+e.message}
 }
