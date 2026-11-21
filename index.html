@@ -24,7 +24,7 @@ function renderSchedule(){
 function renderAttendance(){
  const el=document.getElementById('attendanceList');if(!el)return;
  const casts=remoteCasts.length?remoteCasts:db.casts;
- el.innerHTML=casts.map(c=>'<div class="row" style="justify-content:space-between;border-bottom:1px solid #493b23;padding:8px 0"><b>'+esc(c.name)+'</b><button style="min-width:100px;background:'+(attendance[String(c.id)]===false?'#69312b':'#b99545')+';color:'+(attendance[String(c.id)]===false?'white':'#120e05')+'" onclick="setAttendance(\''+String(c.id).replace(/'/g,'')+'\','+(attendance[String(c.id)]===false?'true':'false')+')">'+(attendance[String(c.id)]===false?'休み':'出勤')+'</button></div>').join('')||'<p>登録キャストがありません。</p>';
+ el.innerHTML=casts.map(c=>'<div class="row" style="justify-content:space-between;border-bottom:1px solid #493b23;padding:8px 0"><b>'+esc(c.name)+'</b><select data-id="'+esc(c.id)+'" aria-label="'+esc(c.name)+'の出勤状況" style="width:145px;max-width:48%;min-height:48px;font-size:17px;padding:9px;background:#242017;color:#f5e8c9;border:2px solid #b99545;border-radius:10px" onchange="setAttendance(this.dataset.id,this.value===\'true\')"><option value="true"'+(attendance[String(c.id)]!==false?' selected':'')+'>出勤</option><option value="false"'+(attendance[String(c.id)]===false?' selected':'')+'>休み</option></select></div>').join('')||'<p>登録キャストがありません。</p>';
 }
 async function loadAttendance(){
  const pin=document.getElementById('staffNotifyPin').value.trim();if(!/^\d{4}$/.test(pin))return;
