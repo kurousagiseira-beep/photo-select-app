@@ -43,7 +43,7 @@ async function saveScheduleEdit(id){
 }
 function editSchedule(id){
  const r=remoteRequests.find(x=>x.id===id),el=document.getElementById('scheduleEditor');if(!r)return;
- el.innerHTML='<h4>タイムテーブル編集 '+esc(r.table||'卓未設定')+'</h4><p class="muted">順番は上下ボタンで変更。時間は手入力で変更できます。</p>'+ (r.schedule||[]).map((x,i)=>'<div class="panel" data-row data-name="'+esc(x.name)+'"><b>'+esc(x.name)+'</b><div class="row"><button onclick="moveScheduleRow(this,-1)">↑</button><button onclick="moveScheduleRow(this,1)">↓</button></div><label>開始<input data-start type="time" value="'+esc(x.start)+'"></label><label>終了<input data-end type="time" value="'+esc(x.end)+'"></label></div>').join('')+'<button onclick="saveScheduleEdit(\''+id+'\')">✓ 変更を保存する</button>';
+ el.innerHTML='<h4>タイムテーブル編集 '+esc(r.table||'卓未設定')+'</h4><p class="muted">順番は上下ボタンで変更。時間は手入力で変更できます。</p>'+ (r.schedule||[]).map((x,i)=>'<div class="panel" data-row data-name="'+esc(x.name)+'"><b>'+esc(x.name)+'</b><div class="row"><button onclick="moveScheduleRow(this,-1)">↑</button><button onclick="moveScheduleRow(this,1)">↓</button></div><label>開始<input data-start type="time" value="'+esc(x.start)+'"></label><label>終了<input data-end type="time" value="'+esc(x.end)+'"></label></div>').join('')+'<button data-id="'+esc(id)+'" onclick="saveScheduleEdit(this.dataset.id)">✓ 変更を保存する</button>';
  el.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function moveScheduleRow(btn,dir){const row=btn.closest('[data-row]'),other=dir<0?row.previousElementSibling:row.nextElementSibling;if(!other||!other.hasAttribute('data-row'))return;if(dir<0)row.parentNode.insertBefore(row,other);else row.parentNode.insertBefore(other,row)}
@@ -53,7 +53,7 @@ function renderSchedule(){
  if(!all.length){area.innerHTML='<p class="muted">写真指名が入ると自動作成され、LINEにも送信されます。</p>';return}
  const rows=all.flatMap((r,i)=>(r.schedule||[]).map(x=>({guest:r.table?r.table+'卓':(i+1)+'組',...x})));
  if(!rows.length){area.innerHTML='<p class="muted">以前の受付には自動タイムテーブルがありません。次の写真指名から表示されます。</p>';return}
- area.innerHTML='<p class="muted">現在保存されているタイムテーブル／受付 '+all.length+'組</p><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>組</th><th>時間</th><th>キャスト</th></tr></thead><tbody>'+rows.map(r=>'<tr style="border-top:1px solid #57441e"><td style="padding:9px 4px">'+r.guest+'</td><td>'+esc(r.start)+'〜'+esc(r.end)+'</td><td>'+esc(r.name)+(r.priority?' <b style="color:#e6c16b">★写真指名</b>':'')+'</td></tr>').join('')+'</tbody></table></div><div class="row">'+all.map(r=>'<button onclick="editSchedule(\\\''+r.id+'\\\')">'+esc(r.table?r.table+'卓':new Date(r.time).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}))+'を編集</button>').join('')+'</div>';
+ area.innerHTML='<p class="muted">現在保存されているタイムテーブル／受付 '+all.length+'組</p><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>組</th><th>時間</th><th>キャスト</th></tr></thead><tbody>'+rows.map(r=>'<tr style="border-top:1px solid #57441e"><td style="padding:9px 4px">'+r.guest+'</td><td>'+esc(r.start)+'〜'+esc(r.end)+'</td><td>'+esc(r.name)+(r.priority?' <b style="color:#e6c16b">★写真指名</b>':'')+'</td></tr>').join('')+'</tbody></table></div><div class="row">'+all.map(r=>'<button data-id="'+esc(r.id)+'" onclick="editSchedule(this.dataset.id)">'+esc(r.table?r.table+'卓':new Date(r.time).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}))+'を編集</button>').join('')+'</div>';
 }
 function renderAttendance(){
  const el=document.getElementById('attendanceList');if(!el)return;
