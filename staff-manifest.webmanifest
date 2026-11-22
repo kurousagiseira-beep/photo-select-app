@@ -1,0 +1,19 @@
+{
+  "name": "CLUB KISS スタッフ管理",
+  "short_name": "KISS STAFF",
+  "description": "CLUB KISS スタッフ管理・確認",
+  "id": "./staff.html",
+  "start_url": "./staff.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#090909",
+  "theme_color": "#14110b",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
