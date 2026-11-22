@@ -91,7 +91,7 @@ const salesAliases=[
  ['輝',['輝','輝支配人']],
  ['れもん',['れもん','レモン']],
  ['ルパン',['ルパン','ルパン支配人']],
- ['しゅう',['しゅう','シュウ']]
+ ['しゅう',['しゅう','シュウ','柊']]
 ];
 function normalizeSalesName(x){return String(x||'').replace(/[\s　・\-＿_]/g,'').toLowerCase()}
 function matchSalesCast(label,casts){
@@ -186,12 +186,12 @@ function applyVerifiedSalesOrder(){
  const casts=(remoteLoaded?remoteCasts:db.casts).filter(c=>c.active!==false);
  // Verified from the user's D-system screenshot, ordered top-to-bottom.
  // Unlisted cast しゅう is placed after all shown active casts, explicitly provisional.
- const source=['白','流川','ハウル','ローザ','ゆき','きょうま','輝','れもん','ルパン'];
- const aliases={白:['白'],流川:['流川'],ハウル:['はうる','ハウル'],ローザ:['ローザ'],ゆき:['ゆき','結希'],きょうま:['きょうま','京磨'],輝:['輝'],れもん:['れもん','レモン'],ルパン:['ルパン']};
+ const source=['白','流川','ハウル','ローザ','ゆき','しゅう','きょうま','輝','れもん','ルパン'];
+ const aliases={白:['白'],流川:['流川'],ハウル:['はうる','ハウル'],ローザ:['ローザ'],ゆき:['ゆき','結希'],しゅう:['しゅう','柊'],きょうま:['きょうま','京磨'],輝:['輝'],れもん:['れもん','レモン'],ルパン:['ルパン']};
  const used=new Set(),ordered=[];
  for(const name of source){const c=casts.find(c=>!used.has(String(c.id))&&(aliases[name]||[name]).some(a=>normalizeSalesName(c.name)===normalizeSalesName(a)));if(c){used.add(String(c.id));ordered.push(c)}}
  const rest=casts.filter(c=>!used.has(String(c.id)));
- if(!confirm('送っていただいたD-system画像の順番を順位欄に反映します。\n\n画像に載っていないキャストは最後に仮配置します。\n\n反映しますか？'))return;
+ if(!confirm('送っていただいたD-system画像の順番を順位欄に反映します。\n\n一ノ瀬愛斗は対象外です。画像に載っていないキャストは最後に仮配置します。\n\n反映しますか？'))return;
  const all=[...ordered,...rest];fields.forEach(f=>f.value=String(all.findIndex(c=>String(c.id)===f.dataset.rankId)+1));
  document.getElementById('salesImportPreview').innerHTML='<b>画像を目視確認した順位</b><div class="sales-rank-list">'+all.map((c,i)=>'<div class="sales-rank-item"><strong>'+(i+1)+'位</strong><span>'+esc(c.name)+'</span>'+(i>=ordered.length?'<small>画像外・仮順位</small>':'')+'</div>').join('')+'</div>';
  out.textContent='画像の順位を入力しました。'+(rest.length?rest.length+'名は画像に載っていないため仮順位です。':'')+'確認して「売上順位を保存」を押してください。';
