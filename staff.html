@@ -128,7 +128,7 @@ async function importSalesScreenshot(file){
   // Extract explicit row numbers from the table, not the order in which OCR returns text.
   const rows=[];
   for(const l of lines){
-   const match=l.text.match(/^\\s*(\\d{1,2})\\s*[|｜.．、:]?\\s*(.*)$/);
+   const match=l.text.match(/^\s*(\d{1,2})\s*[|｜.．、:]?\s*(.*)$/);
    if(match&&Number(match[1])>=1&&Number(match[1])<=40&&l.x<canvas.width*0.4){
     rows.push({rank:Number(match[1]),y:l.y,text:match[2]});
    }
