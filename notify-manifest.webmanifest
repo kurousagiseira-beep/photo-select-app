@@ -1,0 +1,18 @@
+{
+  "name": "CLUB KISS 注文通知",
+  "short_name": "KISS通知",
+  "id": "./notify.html",
+  "start_url": "./notify.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0c0b0a",
+  "theme_color": "#15110b",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
