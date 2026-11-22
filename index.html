@@ -16,6 +16,7 @@ async function startCustomer(){
   if(!check.ok)throw Error(data.error||'共有状況を確認できません');
   let state=data.state;
   if(!state){if(!welcomeCount)return alert('最初のお客様は人数を選択してください');const created=await callApi('/photo/shared',{action:'init',table:t,partySize:welcomeCount});state=created.state}
+  if(state.guestSelections?.some(ids=>ids.length)){const proceed=confirm('この卓には以前の写真指名の選択が残っています。\n前のお客様の選択が表示される可能性があります。\n\n同じグループで選択を続ける場合は「OK」、新しいお客様の場合は「キャンセル」を押してスタッフに席の選択をリセットしてもらってください。');if(!proceed)return}
   applySharedState(state);started=true;show('customer');document.getElementById('sharedStatus').textContent='✓ '+t+' の指名を共有中（'+state.partySize+'名）';
  }catch(e){alert('共有画面を開けません：'+e.message)}
 }
