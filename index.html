@@ -117,7 +117,7 @@ function renderSchedule(){
  const area=document.getElementById('scheduleTable');if(!area)return;
  const all=(remoteRequests||[]).filter(r=>r.status!=='cancel').sort((a,b)=>a.time-b.time);
  if(!all.length){area.innerHTML='<p class="muted">写真指名が入ると自動作成され、LINEにも送信されます。</p>';return}
- const rows=all.flatMap((r,i)=>(r.schedule||[]).map(x=>({guest:r.table?r.table+'卓':(i+1)+'組',...x})));
+ const rows=all.flatMap((r,i)=>{const grouped=new Map();for(const x of (r.schedule||[])){const k=x.start+'|'+x.end;if(!grouped.has(k))grouped.set(k,{guest:r.table?r.table+'卓':(i+1)+'組',start:x.start,end:x.end,names:[],priority:false});const g=grouped.get(k);g.names.push(x.name);g.priority=g.priority||!!x.priority}return [...grouped.values()].map(g=>({...g,name:g.names.join('・')}))});
  if(!rows.length){area.innerHTML='<p class="muted">以前の受付には自動タイムテーブルがありません。次の写真指名から表示されます。</p>';return}
  area.innerHTML='<p class="muted">現在保存されているタイムテーブル／受付 '+all.length+'組</p><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>組</th><th>時間</th><th>キャスト</th></tr></thead><tbody>'+rows.map(r=>'<tr style="border-top:1px solid #57441e"><td style="padding:9px 4px">'+r.guest+'</td><td>'+esc(r.start)+'〜'+esc(r.end)+'</td><td>'+esc(r.name)+(r.priority?' <b style="color:#e6c16b">★写真指名</b>':'')+'</td></tr>').join('')+'</tbody></table></div><div class="row">'+all.map(r=>'<button data-id="'+esc(r.id)+'" onclick="editSchedule(this.dataset.id)">'+esc(r.table?r.table+'卓':new Date(r.time).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}))+'を編集</button>').join('')+'</div>';
 }
