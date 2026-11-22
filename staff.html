@@ -152,15 +152,15 @@ async function importSalesScreenshot(file){
    preview.innerHTML='<p>現在の順位は変更していません。</p>';return;
   }
   found.sort((a,b)=>a.rank-b.rank);
-  // Keep ranks from explicit table row numbers. Do not compress 1,2,4 into 1,2,3.
+  // Re-rank only the casts actually registered in this app: D-system may contain former staff.
+  // Unrecognized staff must not be silently assigned a high No. position.
+  const ordered=found.filter(x=>fields.some(f=>f.dataset.rankId===x.id));
   fields.forEach(f=>f.value='');
-  for(const row of found){
-   const field=fields.find(f=>f.dataset.rankId===row.id);
-   if(field&&row.rank<=fields.length)field.value=String(row.rank);
-  }
-  preview.innerHTML='<b>画像で確認できた順位</b><div class="sales-rank-list">'+found.map(x=>'<div class="sales-rank-item"><strong>'+x.rank+'位</strong><span>'+esc(x.name)+'</span></div>').join('')+'</div>';
+  ordered.forEach((row,i)=>{const field=fields.find(f=>f.dataset.rankId===row.id);if(field)field.value=String(i+1)});
+  preview.innerHTML='<b>画像から読み取った順番（登録キャストのみ）</b><div class="sales-rank-list">'+ordered.map((x,i)=>'<div class="sales-rank-item"><strong>'+(i+1)+'位</strong><span>'+esc(x.name)+'</span><small>画像No.'+x.rank+'</small></div>').join('')+'</div>';
   const missing=fields.filter(f=>!f.value);
-  out.textContent=found.length+'名の順位を画像のNo列から読み取りました。'+(missing.length?'残り'+missing.length+'名は未確定です。確認してから「空欄を自動補完」を押してください。':'全員確認できました。')+'保存するまではお客様画面に反映されません。';
+  out.textContent=ordered.length+'名を画像のNo列から認識しました。'+(missing.length?'残り'+missing.length+'名は未確定です。':'全員認識しました。')+'「順位の確認・修正」で全員の順位を確認してから保存してください。';
+
  }catch(e){out.textContent='画像の読み取りに失敗：'+e.message}
 }
 async function checkSalesSystem(){
