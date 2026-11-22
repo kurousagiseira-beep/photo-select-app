@@ -10,27 +10,43 @@ async function submitNamedEntry(){if(document.getElementById('sendNamedEntry').d
 function choosePartyCount(n){if(sending)return;if(!requireAgeAgreement())return;if(n===7){const entered=prompt('7名以上の場合、実際の人数を入力してください（7〜20名）',String(welcomeCount>=7?welcomeCount:7));if(entered===null)return;n=Number(entered)}if(!Number.isInteger(n)||n<1||n>20)return alert('人数は1〜20名で入力してください');welcomeCount=n;document.querySelectorAll('#partyButtons .party-choice').forEach(b=>b.classList.toggle('chosen',Number(b.dataset.count)===(n>=7?7:n)));document.getElementById('partyChoiceLabel').textContent=n+'名を選択中';document.getElementById('beginPhotoSelect').disabled=false}
 async function startCustomer(){
  if(!requireAgeAgreement())return;
- const input=document.getElementById('customerTable'),t=input.value;if(!allowedTables.includes(t))return alert('お席を選択してください');tableNumber=t;
+ const input=document.getElementById('customerTable'),t=input.value;
+ if(!allowedTables.includes(t))return alert('お席を選択してください');
+ tableNumber=t;
  try{
   const check=await fetch(API+'/photo/shared?table='+encodeURIComponent(t),{cache:'no-store'}),data=await check.json();
   if(!check.ok)throw Error(data.error||'共有状況を確認できません');
   let state=data.state;
-  // QRから入った新しいお客様には、過去の選択を初期表示しない。
-  // 既に同卓の別端末が操作中の場合は、その選択を勝手に消さず参加する。
   if(!state){
-   if(!welcomeCount)return alert('最初のお客様は人数を選択してください');
+   if(!welcomeCount)return alert('人数を選択してください');
    const created=await callApi('/photo/shared',{action:'init',table:t,partySize:welcomeCount});state=created.state;
-  }else if(state.guestSelections?.some(ids=>ids.length)){
-   // 別のお客様の選択を引き継がない。明示的な同卓共有の場合のみ継続する。
-   const joining=confirm('この卓には選択中の写真指名があります。\n\n【OK】同じグループの別端末として参加\n【キャンセル】新しいお客様として最初から選び直す');
-   if(!joining){
-    if(!welcomeCount)return alert('新しい受付の人数を選択してください');
-    const fresh=await callApi('/photo/shared',{action:'init',table:t,partySize:welcomeCount,fresh:true});
-    state=fresh.state;
+  }
+  // QRからの新しい受付は、前回の写真指名を絶対に引き継がない。
+  // 本番Workerで稼働済みのselect操作を使い、サーバー側も未選択に戻す。
+  if(state.guestSelections?.some(ids=>ids.length)){
+   for(let attempt=0;attempt<3;attempt++){
+    try{
+     for(let i=0;i<state.guestSelections.length;i++){
+      if(!state.guestSelections[i]?.length)continue;
+      const cleared=await callApi('/photo/shared',{action:'select',table:t,index:i,ids:[],revision:state.revision});
+      state=cleared.state;
+     }
+     break;
+    }catch(e){
+     if(attempt===2)throw Error('前のお客様の選択を解除できませんでした。もう一度お試しください。');
+     const fresh=await fetch(API+'/photo/shared?table='+encodeURIComponent(t),{cache:'no-store'});
+     if(!fresh.ok)throw Error('席の選択状態を確認できません');
+     state=(await fresh.json()).state;
+     if(!state)throw Error('席の共有情報がありません');
+    }
    }
   }
-  applySharedState(state);started=true;show('customer');document.getElementById('sharedStatus').textContent='✓ '+t+' の指名を共有中（'+state.partySize+'名）';
- }catch(e){alert('共有画面を開けません：'+e.message)}
+  // 万一解除できていない場合は受付画面へ進めない。
+  if(state.guestSelections?.some(ids=>ids.length))throw Error('前の選択が残っています。もう一度お試しください。');
+  guestIndex=0;selected=[];guestSelections=Array.from({length:state.partySize},()=>[]);
+  applySharedState(state);started=true;show('customer');
+  document.getElementById('sharedStatus').textContent='✓ '+t+' の写真指名を未選択から開始しました（'+state.partySize+'名）';
+ }catch(e){alert('受付を開始できません：'+e.message)}
 }
 function applySharedState(state){
  if(!state||state.table!==tableNumber)return;
