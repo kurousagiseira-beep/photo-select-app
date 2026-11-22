@@ -21,9 +21,11 @@ async function startCustomer(){
    if(!welcomeCount)return alert('人数を選択してください');
    const created=await callApi('/photo/shared',{action:'init',table:t,partySize:welcomeCount});state=created.state;
   }
-  // QRからの新しい受付は、前回の写真指名を絶対に引き継がない。
-  // 本番Workerで稼働済みのselect操作を使い、サーバー側も未選択に戻す。
-  if(state.guestSelections?.some(ids=>ids.length)){
+  // 同卓の別端末が既に選択している場合は共有参加か新規受付かを明示的に選ぶ。
+  // 共有参加では既存の選択を絶対に消さない。
+  const hasSelections=state.guestSelections?.some(ids=>ids.length);
+  const joinExisting=hasSelections&&confirm('この卓では写真指名を選択中です。\n\n【OK】同じ卓の2人目として参加（選択を同期）\n【キャンセル】新しい受付として選択を全て解除');
+  if(hasSelections&&!joinExisting){
    for(let attempt=0;attempt<3;attempt++){
     try{
      for(let i=0;i<state.guestSelections.length;i++){
@@ -42,10 +44,10 @@ async function startCustomer(){
    }
   }
   // 万一解除できていない場合は受付画面へ進めない。
-  if(state.guestSelections?.some(ids=>ids.length))throw Error('前の選択が残っています。もう一度お試しください。');
-  guestIndex=0;selected=[];guestSelections=Array.from({length:state.partySize},()=>[]);
+  if(!joinExisting&&state.guestSelections?.some(ids=>ids.length))throw Error('前の選択が残っています。もう一度お試しください。');
+  guestIndex=joinExisting?Math.min(1,state.partySize-1):0;selected=[];guestSelections=Array.from({length:state.partySize},()=>[]);
   applySharedState(state);started=true;show('customer');
-  document.getElementById('sharedStatus').textContent='✓ '+t+' の写真指名を未選択から開始しました（'+state.partySize+'名）';
+  document.getElementById('sharedStatus').textContent=joinExisting?'✓ '+t+' の指名を同卓のスマホと同期中':'✓ '+t+' の写真指名を未選択から開始しました（'+state.partySize+'名）';
  }catch(e){alert('受付を開始できません：'+e.message)}
 }
 function applySharedState(state){
