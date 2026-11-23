@@ -207,8 +207,8 @@ async function loadPreviousSales(){
   const d=await callApi('/photo/previous-sales',{pin});if(d.featureVersion!=='rank-order-v2')throw Error('Cloudflareが旧バージョンです。先にWorkerの本番反映が必要です');staffPinCache=pin;
   const casts=(remoteLoaded?remoteCasts:db.casts).filter(c=>c.active!==false);
   const order=Array.isArray(d.rankOrder)?d.rankOrder:[];const completeOrder=[...order.filter(id=>casts.some(c=>String(c.id)===String(id))),...casts.map(c=>String(c.id)).filter(id=>!order.includes(id))];
-  showSalesRankFields(completeOrder);
-  out.textContent=d.month+'の売上順位を設定してください。スクショから自動入力できます。';
+  showSalesRankFields(order.length?order:[]);
+  out.textContent=order.length?'✓ '+d.month+'の保存済み順位を読み込みました。変更後は「売上順位を保存」を押してください。':d.month+'の売上順位は未登録です。順位を入力して保存してください。';
  }catch(e){out.textContent='読み込み失敗：'+e.message}
 }
 function fillMissingSalesRanks(){
