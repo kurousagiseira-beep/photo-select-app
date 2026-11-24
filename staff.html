@@ -294,16 +294,16 @@ function renameManagedSeat(old){const v=document.getElementById('renameSeat_'+ol
 function removeManagedSeat(t){if(managedTables.length===1)return alert('最低1席は残してください');if(confirm(t+'を削除しますか？過去の履歴は残ります。'))saveSeatConfig(managedTables.filter(x=>x!==t))}
 async function resetSeatPhotoSelection(t){const out=document.getElementById('seatResult'),pin=seatPin();if(!/^\d{4}$/.test(pin)){out.textContent='スタッフPINを入力してください';return}if(!confirm(t+'の写真指名選択を全て解除しますか？\nこの卓の全端末の選択が消えます。受付済みの指名履歴は消えません。'))return;try{await callApi('/photo/shared-reset',{pin,table:t});out.textContent='✓ '+t+'の写真指名選択をリセットしました。新しいお客様は選択なしから始まります'}catch(e){out.textContent='リセット失敗：'+e.message}}
 async function saveSeatDetails(t){const out=document.getElementById('seatResult'),pin=seatPin();if(!/^\d{4}$/.test(pin)){out.textContent='スタッフPINを入力してください';return}const occupied=document.getElementById('seatOccupied_'+t).value==='true',partySize=Number(document.getElementById('seatParty_'+t).value),castNames=document.getElementById('seatCasts_'+t).value,note=document.getElementById('seatNote_'+t).value;try{await callApi('/photo/table-details-update',{pin,table:t,occupied,partySize,castNames,note});await loadSeatManager();await refreshTablePresence();out.textContent='✓ '+t+'の席情報を保存しました'}catch(e){out.textContent='保存失敗：'+e.message}}
-let tablePresence={},tablePresenceKnown=false;async function refreshTablePresence(){try{const r=await fetch(API+'/photo/table-presence',{cache:'no-store'});if(!r.ok)throw Error('通信エラー');const data=await r.json();if(!data.tables||typeof data.tables!=='object')throw Error('席情報なし');tablePresence=data.tables;tablePresenceKnown=true;managedTables=Object.keys(tablePresence).length?Object.keys(tablePresence):managedTables;if(specialTable&&!tablePresence[specialTable]){specialTable='';specialCastId='';specialKind=''}renderSpecialCasts();document.getElementById('tablePresenceNote').textContent='明るい席：新規受付済み／暗い席：受付なし・退店済み（選択不可）'}catch(e){tablePresenceKnown=false;renderSpecialCasts();document.getElementById('tablePresenceNote').textContent='席の利用状況を取得できません。利用中の席を手動で選択してください。'}}let specialTable='',specialCastId='',specialKind='',specialCorrectionId='';
+let tablePresence={},tablePresenceKnown=false;async function refreshTablePresence(){try{const r=await fetch(API+'/photo/table-presence',{cache:'no-store'});if(!r.ok)throw Error('通信エラー');const data=await r.json();if(!data.tables||typeof data.tables!=='object')throw Error('席情報なし');tablePresence=data.tables;tablePresenceKnown=true;managedTables=Object.keys(tablePresence).length?Object.keys(tablePresence):managedTables;if(specialTable&&!tablePresence[specialTable]){specialTable='';specialCastId='';specialKind=''}renderSpecialCasts();document.getElementById('tablePresenceNote').textContent='明るい席：新規受付済み／暗い席：受付なし・退店済み（選択不可）'}catch(e){tablePresenceKnown=false;specialTable='';specialCastId='';specialKind='';specialCorrectionId='';renderSpecialCasts();document.getElementById('tablePresenceNote').innerHTML='新規受付状況を取得できません。誤通知防止のため選択を停止しています。 <button type="button" onclick="refreshTablePresence()">再取得</button>'}}let specialTable='',specialCastId='',specialKind='',specialCorrectionId='';
 function specialTableLabel(t){return t.startsWith('VIP')?t:t+'卓'}
 function renderSpecialCasts(){
  const el=document.getElementById('specialTableButtons');if(!el)return;
  const tables=managedTables;
- el.innerHTML=tables.map(t=>'<button type="button" class="'+((!tablePresenceKnown||tablePresence[t])?(specialTable===t?'chosen':'occupied'):'')+'" onclick="chooseSpecialTable(\''+t+'\')">'+specialTableLabel(t)+'</button>').join('');
+ el.innerHTML=tables.map(t=>'<button type="button" class="'+((tablePresenceKnown&&tablePresence[t])?(specialTable===t?'chosen':'occupied'):'')+'" onclick="chooseSpecialTable(\''+t+'\')">'+specialTableLabel(t)+'</button>').join('');
  renderSpecialCastButtons();
 }
 function chooseSpecialTable(table){
- if(tablePresenceKnown&&!tablePresence[table])return;
+ if(!tablePresenceKnown||!tablePresence[table])return;
  specialTable=table;specialCastId='';specialKind='';specialCorrectionId='';
  document.getElementById('specialResult').textContent='';
  renderSpecialCasts();
@@ -341,6 +341,7 @@ function renderSpecialActions(){
 async function sendSpecialNotify(){
  const pin=document.getElementById('specialPin').value.trim(),out=document.getElementById('specialResult'),button=document.getElementById('specialSend');
  const cast=(remoteLoaded?remoteCasts:db.casts).find(c=>String(c.id)===specialCastId);
+ if(!tablePresenceKnown||!tablePresence[specialTable])return alert('新規受付状況を確認できません。再取得してください');
  if(!specialTable||!cast||!specialKind)return alert('席・キャスト・通知内容を選択してください');
  if(!/^\d{4}$/.test(pin))return alert('スタッフPINを4桁入力してください');
  if(!confirm((specialCorrectionId?'【変更通知】':'')+specialTableLabel(specialTable)+'・'+cast.name+'の「'+specialKind+'」をLINEグループに通知しますか？'))return;
@@ -362,7 +363,7 @@ async function loadSpecialHistory(){
 }
 function editSpecialHistory(id){
  const x=specialHistory.find(h=>h.id===id);
- if(!x||(tablePresenceKnown&&!tablePresence[x.table]))return alert('この席は退店済みか受付がありません');
+ if(!x||!tablePresenceKnown||!tablePresence[x.table])return alert('この席は退店済みか受付がありません');
  specialTable=x.table;specialCastId=x.castId;specialKind=x.kind;specialCorrectionId=x.id;
  renderSpecialCasts();renderSpecialActions();
  document.getElementById('specialResult').textContent='変更中：'+specialTableLabel(x.table)+'／'+x.castName+'／'+x.kind+'。キャストまたは通知内容を変更して送信してください';
