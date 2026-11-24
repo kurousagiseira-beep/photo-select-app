@@ -299,7 +299,7 @@ function specialTableLabel(t){return t.startsWith('VIP')?t:t+'卓'}
 function renderSpecialCasts(){
  const el=document.getElementById('specialTableButtons');if(!el)return;
  const tables=managedTables;
- el.innerHTML=tables.map(t=>'<button type="button" class="'+((tablePresenceKnown&&tablePresence[t])?(specialTable===t?'chosen':'occupied'):'')+'" onclick="chooseSpecialTable(\''+t+'\')">'+specialTableLabel(t)+'</button>').join('');
+ el.innerHTML=tables.map(t=>{const active=tablePresenceKnown&&tablePresence[t];const rows=active&&specialHistoryKnown?specialHistory.filter(x=>String(x.table)===String(t)&&!x.correctedBy):[];const send=rows.some(x=>x.kind==='送り指名'),drink=rows.some(x=>x.kind==='飲み直し');return '<button type="button" class="'+(active?(specialTable===t?'chosen':'occupied'):'')+'" onclick="chooseSpecialTable(\''+t+'\')" '+(!active?'disabled':'')+' style="'+(send&&drink?'background:linear-gradient(135deg,#245239,#24466b);color:white':send?'background:#245239;color:white':drink?'background:#24466b;color:white':'')+'">'+esc(specialTableLabel(t))+(send?'<small style="display:block;color:#d1fae5;font-size:11px">送り通知済（本日）</small>':'')+(drink?'<small style="display:block;color:#dbeafe;font-size:11px">飲み直し通知済（本日）</small>':'')+'</button>'}).join('');
  renderSpecialCastButtons();
 }
 function chooseSpecialTable(table){
@@ -350,16 +350,16 @@ async function sendSpecialNotify(){
  catch(e){out.textContent='通知できませんでした：'+e.message}
  finally{if(specialKind)button.disabled=false}
 }
-let specialHistory=[];
+let specialHistory=[],specialHistoryKnown=false;
 async function loadSpecialHistory(){
  const pin=document.getElementById('specialHistoryPin').value.trim()||document.getElementById('specialPin').value.trim()||staffPinCache;
  const out=document.getElementById('specialHistoryList');
  if(!/^\d{4}$/.test(pin)){out.textContent='履歴を表示するにはスタッフPINを入力してください';return}
- try{const data=await callApi('/photo/special-history',{pin});specialHistory=data.history||[];
+ try{const data=await callApi('/photo/special-history',{pin});specialHistory=data.history||[];specialHistoryKnown=true;renderSpecialCasts();
   const latest=specialHistory.filter(x=>!x.correctedBy).reverse();
   out.innerHTML=latest.map(x=>'<div class="special-history-row"><div><b>'+esc(specialTableLabel(x.table))+'／'+esc(x.castName)+'／'+esc(x.kind)+'</b><p class="muted">'+new Date(x.time).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})+(x.correctionOf?'（変更済み）':'')+'</p></div><button type="button" data-edit="'+esc(x.id)+'">変更する</button></div>').join('')||'<p class="muted">本日の送信履歴はありません</p>';
   out.querySelectorAll('button[data-edit]').forEach(btn=>btn.addEventListener('click',()=>editSpecialHistory(btn.dataset.edit)));
- }catch(e){out.textContent='履歴を取得できません：'+e.message}
+ }catch(e){specialHistoryKnown=false;renderSpecialCasts();out.textContent='履歴を取得できません：'+e.message}
 }
 function editSpecialHistory(id){
  const x=specialHistory.find(h=>h.id===id);
@@ -428,5 +428,5 @@ async function addPhotos(id,input){const c=findEditableCast(id);if(!c)return;con
 function removePhoto(id,index){if(!confirm('この写真を削除しますか？'))return;const c=findEditableCast(id);if(!c)return;const photos=[...(c.photos?.length?c.photos:(c.photo?[c.photo]:[]))];photos.splice(index,1);c.photos=photos;delete c.photo;render();document.getElementById('publishResult').textContent='写真を削除しました。「お客様へ公開」で反映してください'}
 function toggleActive(id){const c=findEditableCast(id);if(!c)return;c.active=c.active===false;render();document.getElementById('publishResult').textContent='表示設定を変更しました。「お客様へ公開」で反映してください'}
 function deleteCast(id){if(!confirm('このキャストを削除しますか？'))return;if(remoteLoaded)remoteCasts=remoteCasts.filter(c=>String(c.id)!==String(id));else db.casts=db.casts.filter(c=>String(c.id)!==String(id));render();document.getElementById('publishResult').textContent='削除を反映するには「お客様へ公開」を押してください'}
-try{const staffEntry=location.pathname.endsWith('/staff.html')||new URLSearchParams(location.search).get('mode')==='staff';document.body.classList.add(staffEntry?'staff-entry':'customer-entry');show(staffEntry?'staff':'customer');initQrTable();if(!staffEntry&&tableNumber){pingTablePresence();setInterval(pingTablePresence,60000)}if(staffEntry){initStaffView();loadAttendance();}setInterval(()=>{if(!document.getElementById('staff').classList.contains('hide')&&staffPinCache)refreshRequests();syncSharedState()},3500);if(inAppNotifyPin)refreshInAppNotifications();setInterval(()=>{if(inAppNotifyPin)refreshInAppNotifications()},5000);setInterval(()=>{if(document.body.classList.contains("staff-special-focus"))refreshTablePresence()},15000)}catch(e){document.getElementById('sent').textContent='表示エラー：'+e.message;console.error(e)}
+try{const staffEntry=location.pathname.endsWith('/staff.html')||new URLSearchParams(location.search).get('mode')==='staff';document.body.classList.add(staffEntry?'staff-entry':'customer-entry');show(staffEntry?'staff':'customer');initQrTable();if(!staffEntry&&tableNumber){pingTablePresence();setInterval(pingTablePresence,60000)}if(staffEntry){initStaffView();loadAttendance();}setInterval(()=>{if(!document.getElementById('staff').classList.contains('hide')&&staffPinCache)refreshRequests();syncSharedState()},3500);if(inAppNotifyPin)refreshInAppNotifications();setInterval(()=>{if(inAppNotifyPin)refreshInAppNotifications()},5000);setInterval(()=>{if(document.body.classList.contains("staff-special-focus")){refreshTablePresence();if(document.getElementById("specialHistoryPin").value.trim()||document.getElementById("specialPin").value.trim()||staffPinCache)loadSpecialHistory()}},15000)}catch(e){document.getElementById('sent').textContent='表示エラー：'+e.message;console.error(e)}
 </script></html>
