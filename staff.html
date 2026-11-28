@@ -87,6 +87,31 @@ function initScheduleTime(){const el=document.getElementById('scheduleStart');if
 
 function liveBusinessDay(ms){return new Date(ms-18*3600000).toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'})}
 function liveSlotTime(value,base){const m=/^(\d{1,2}):(\d{2})$/.exec(String(value||''));if(!m||+m[1]>47||+m[2]>59)return NaN;const day=liveBusinessDay(base);const midnight=Date.parse(day+'T00:00:00+09:00');const h=+m[1];return midnight+(h<18?h+24:h)*3600000+(+m[2])*60000}
+
+// Local pilot only: never treat these records as shared server data.
+const liveLogKey='kiss_actual_service_v1';
+function readLiveLog(){try{const x=JSON.parse(localStorage.getItem(liveLogKey)||'[]');return Array.isArray(x)?x:[]}catch(e){return []}}
+function writeLiveLog(rows){try{localStorage.setItem(liveLogKey,JSON.stringify(rows));return true}catch(e){alert('接客記録を保存できませんでした');return false}}
+function recordLiveService(button){
+ const id=button.dataset.request, name=button.dataset.cast, action=button.dataset.action;
+ const request=(remoteRequests||[]).find(r=>String(r.id)===id&&r.status!=='cancel');
+ if(!request||!name||!staffPinCache)return alert('受付を更新してください');
+ const rows=readLiveLog(), now=Date.now(), active=rows.find(x=>x.request===id&&x.name===name&&!x.end);
+ if(action==='start'){
+ if(active)return;
+ if(rows.some(x=>x.name===name&&!x.end))return alert('このキャストは別の接客記録が開始中です。先に終了してください。');
+ rows.push({request:id,table:String(request.table),name,start:now,end:null,day:liveBusinessDay(now)});
+ }else{if(!active)return;active.end=now}
+ if(writeLiveLog(rows))renderLiveSchedule();
+}
+function liveServiceControls(r){
+ const id=String(r.id),rows=readLiveLog().filter(x=>x.request===id);
+ const names=[...new Set([...(r.schedule||[]).flatMap(x=>String(x.name||'').split(/[・、＋+＆&]/).map(n=>n.trim()).filter(Boolean)),...rows.map(x=>x.name)])];
+ return '<details data-live-details="'+esc(id)+'"><summary>実際の接客を記録（この端末のみ）</summary>'+names.map(name=>{
+ const active=rows.some(x=>x.name===name&&!x.end),count=rows.filter(x=>x.name===name&&x.end).length;
+ return '<div style="display:flex;align-items:center;gap:8px;margin:6px 0"><span style="flex:1">'+esc(name)+' ／ '+(active?'接客中':count?'終了 '+count+'回':'未記録')+'</span><button type="button" data-request="'+esc(id)+'" data-cast="'+esc(name)+'" data-action="'+(active?'end':'start')+'" onclick="recordLiveService(this)">'+(active?'終了':'開始')+'</button></div>';
+ }).join('')+'</details>';
+}
 function renderLiveSchedule(){
  const el=document.getElementById('liveScheduleCards');if(!el)return;
  const now=Date.now(),day=liveBusinessDay(now),latest=new Map();
@@ -103,6 +128,7 @@ function renderLiveSchedule(){
  const a=assignments[i],b=assignments[j];if(a.table===b.table||a.name!==b.name||Math.max(a.start,b.start)>=Math.min(a.end,b.end))continue;
  for(const [x,y] of [[a,b],[b,a]]){if(!conflicts.has(x.table))conflicts.set(x.table,new Set());conflicts.get(x.table).add(x.name+'：'+specialTableLabel(y.table)+'と重複')}
  }
+ const openDetails=new Set([...el.querySelectorAll('details[open][data-live-details]')].map(x=>x.dataset.liveDetails));
  const cards=[];
  for(const {r,t} of latest.values()){
  if(r.status==='cancel')continue;
@@ -112,11 +138,12 @@ function renderLiveSchedule(){
  const seconds=Number.isFinite(boundary)?Math.max(0,Math.ceil((boundary-now)/1000)):null;
  const clock=seconds===null?'—':Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0');
  const status=current.length?'接客予定中':next.length?'開始・交代待ち':slots.length?'予定終了・送り確認':'時間未設定';
- cards.push('<div class="panel" style="border:1px solid #806437;margin:8px 0"><div style="display:flex;justify-content:space-between;gap:8px"><b>'+esc(specialTableLabel(String(r.table)))+' ／ '+esc(status)+'</b><b style="font-size:1.4em;color:#e6c16b">'+clock+'</b></div><p>写真指名：'+esc((r.names||[]).join('・')||'なし')+'</p><p>現在：'+esc(current.map(x=>x.name).join('・')||'—')+'</p><p>次：'+esc(next.map(x=>x.name).join('・')||'—')+'</p>'+(conflicts.has(String(r.table))?'<p style="color:#ffb0a0;font-weight:bold">⚠ 卓被り：'+esc([...conflicts.get(String(r.table))].join(' ／ '))+'</p>':'')+'</div>');
+ cards.push('<div class="panel" style="border:1px solid #806437;margin:8px 0"><div style="display:flex;justify-content:space-between;gap:8px"><b>'+esc(specialTableLabel(String(r.table)))+' ／ '+esc(status)+'</b><b style="font-size:1.4em;color:#e6c16b">'+clock+'</b></div><p>写真指名：'+esc((r.names||[]).join('・')||'なし')+'</p><p>現在：'+esc(current.map(x=>x.name).join('・')||'—')+'</p><p>次：'+esc(next.map(x=>x.name).join('・')||'—')+'</p>'+(conflicts.has(String(r.table))?'<p style="color:#ffb0a0;font-weight:bold">⚠ 卓被り：'+esc([...conflicts.get(String(r.table))].join(' ／ '))+'</p>':'')+liveServiceControls(r)+'</div>');
  }
  el.innerHTML=cards.join('')||'<p class="muted">本日の受付はありません。スタッフPINで受付を更新してください。</p>';
+ el.querySelectorAll('details[data-live-details]').forEach(x=>{x.open=openDetails.has(x.dataset.liveDetails)});
 }
-setInterval(renderLiveSchedule,1000);
+setInterval(()=>{const el=document.getElementById('liveScheduleCards');if(el&&el.contains(document.activeElement))return;renderLiveSchedule()},1000);
 
 function renderFloorBoard(){
  const el=document.getElementById('floorBoard');if(!el)return;
