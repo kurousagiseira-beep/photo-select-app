@@ -91,6 +91,18 @@ function renderLiveSchedule(){
  const el=document.getElementById('liveScheduleCards');if(!el)return;
  const now=Date.now(),day=liveBusinessDay(now),latest=new Map();
  for(const r of (remoteRequests||[])){const t=Number(r.time)||Date.parse(r.time);if(!Number.isFinite(t)||liveBusinessDay(t)!==day||!r.table)continue;const key=String(r.table);if(!latest.has(key)||latest.get(key).t<t)latest.set(key,{r,t})}
+ const conflicts=new Map(), assignments=[];
+ for(const {r,t} of latest.values()){
+ if(r.status==='cancel')continue;
+ for(const x of (r.schedule||[])){
+ const start=liveSlotTime(x.start,t),end=liveSlotTime(x.end,t);
+ if(!(end>start&&end>now))continue;
+ for(const name of String(x.name||'').split(/[・、＋+＆&]/).map(n=>n.trim()).filter(Boolean))assignments.push({name,start,end,table:String(r.table)});
+ }}
+ for(let i=0;i<assignments.length;i++)for(let j=i+1;j<assignments.length;j++){
+ const a=assignments[i],b=assignments[j];if(a.table===b.table||a.name!==b.name||Math.max(a.start,b.start)>=Math.min(a.end,b.end))continue;
+ for(const [x,y] of [[a,b],[b,a]]){if(!conflicts.has(x.table))conflicts.set(x.table,new Set());conflicts.get(x.table).add(x.name+'：'+specialTableLabel(y.table)+'と重複')}
+ }
  const cards=[];
  for(const {r,t} of latest.values()){
  if(r.status==='cancel')continue;
@@ -100,7 +112,7 @@ function renderLiveSchedule(){
  const seconds=Number.isFinite(boundary)?Math.max(0,Math.ceil((boundary-now)/1000)):null;
  const clock=seconds===null?'—':Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0');
  const status=current.length?'接客予定中':next.length?'開始・交代待ち':slots.length?'予定終了・送り確認':'時間未設定';
- cards.push('<div class="panel" style="border:1px solid #806437;margin:8px 0"><div style="display:flex;justify-content:space-between;gap:8px"><b>'+esc(specialTableLabel(String(r.table)))+' ／ '+esc(status)+'</b><b style="font-size:1.4em;color:#e6c16b">'+clock+'</b></div><p>写真指名：'+esc((r.names||[]).join('・')||'なし')+'</p><p>現在：'+esc(current.map(x=>x.name).join('・')||'—')+'</p><p>次：'+esc(next.map(x=>x.name).join('・')||'—')+'</p></div>');
+ cards.push('<div class="panel" style="border:1px solid #806437;margin:8px 0"><div style="display:flex;justify-content:space-between;gap:8px"><b>'+esc(specialTableLabel(String(r.table)))+' ／ '+esc(status)+'</b><b style="font-size:1.4em;color:#e6c16b">'+clock+'</b></div><p>写真指名：'+esc((r.names||[]).join('・')||'なし')+'</p><p>現在：'+esc(current.map(x=>x.name).join('・')||'—')+'</p><p>次：'+esc(next.map(x=>x.name).join('・')||'—')+'</p>'+(conflicts.has(String(r.table))?'<p style="color:#ffb0a0;font-weight:bold">⚠ 卓被り：'+esc([...conflicts.get(String(r.table))].join(' ／ '))+'</p>':'')+'</div>');
  }
  el.innerHTML=cards.join('')||'<p class="muted">本日の受付はありません。スタッフPINで受付を更新してください。</p>';
 }
